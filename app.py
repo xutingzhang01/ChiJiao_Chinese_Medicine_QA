@@ -168,7 +168,7 @@ def load_model():
     base_path = './blue_coat'
     os.system('apt install git')
     os.system('apt install git-lfs')
-    os.system(f'git clone https://code.openxlab.org.cn/Peter.Xu/blue_coat.git {base_path}')
+    os.system(f'git clone -b release https://code.openxlab.org.cn/Peter.Xu/blue_coat.git {base_path}')
     os.system(f'cd {base_path} && git lfs pull')
 
     tokenizer = AutoTokenizer.from_pretrained(base_path, trust_remote_code=True)
