@@ -1,13 +1,13 @@
 import copy
 import warnings
+import os
 from dataclasses import asdict, dataclass
 from typing import Callable, List, Optional
 
 import streamlit as st
 import torch
 from torch import nn
-from transformers.generation.utils import (LogitsProcessorList,
-                                           StoppingCriteriaList)
+from transformers.generation.utils import LogitsProcessorList, StoppingCriteriaList
 from transformers.utils import logging
 
 from transformers import AutoTokenizer, AutoModelForCausalLM  # isort: skip
@@ -15,7 +15,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM  # isort: skip
 logger = logging.get_logger(__name__)
 
 
-model_name_or_path = "./blue_coat"
+model_name_or_path = "/root/InternLM/XTuner/merged"
 
 @dataclass
 class GenerationConfig:
@@ -165,11 +165,14 @@ def on_btn_click():
 
 @st.cache_resource
 def load_model():
-    model = (AutoModelForCausalLM.from_pretrained(model_name_or_path,
-                                                  trust_remote_code=True).to(
-                                                      torch.bfloat16).cuda())
-    tokenizer = AutoTokenizer.from_pretrained(model_name_or_path,
-                                              trust_remote_code=True)
+    base_path = './blue_coat'
+    os.system('apt install git')
+    os.system('apt install git-lfs')
+    os.system(f'git clone https://code.openxlab.org.cn/Peter.Xu/blue_coat.git {base_path}')
+    os.system(f'cd {base_path} && git lfs pull')
+
+    tokenizer = AutoTokenizer.from_pretrained(base_path, trust_remote_code=True)
+    model = AutoModelForCausalLM.from_pretrained(base_path, trust_remote_code=True, torch_dtype=torch.float16).cuda()
     return model, tokenizer
 
 
@@ -214,36 +217,26 @@ def combine_history(prompt):
 
 
 def main():
-    # torch.cuda.empty_cache()
     print('load model begin.')
     model, tokenizer = load_model()
     print('load model end.')
-
 
     st.title('赤脚中医偏方问答助手')
 
     generation_config = prepare_generation_config()
 
-    # Initialize chat history
     if 'messages' not in st.session_state:
         st.session_state.messages = []
 
-    # Display chat messages from history on app rerun
     for message in st.session_state.messages:
         with st.chat_message(message['role'], avatar=message.get('avatar')):
             st.markdown(message['content'])
 
-    # Accept user input
     if prompt := st.chat_input('What is up?'):
-        # Display user message in chat message container
         with st.chat_message('user'):
             st.markdown(prompt)
         real_prompt = combine_history(prompt)
-        # Add user message to chat history
-        st.session_state.messages.append({
-            'role': 'user',
-            'content': prompt,
-        })
+        st.session_state.messages.append({'role': 'user', 'content': prompt})
 
         with st.chat_message('robot'):
             message_placeholder = st.empty()
@@ -254,16 +247,10 @@ def main():
                     additional_eos_token_id=92542,
                     **asdict(generation_config),
             ):
-                # Display robot response in chat message container
                 message_placeholder.markdown(cur_response + '▌')
             message_placeholder.markdown(cur_response)
-        # Add robot response to chat history
-        st.session_state.messages.append({
-            'role': 'robot',
-            'content': cur_response,  # pylint: disable=undefined-loop-variable
-        })
+        st.session_state.messages.append({'role': 'robot', 'content': cur_response})
         torch.cuda.empty_cache()
-
 
 if __name__ == '__main__':
     main()
